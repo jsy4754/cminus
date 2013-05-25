@@ -3,7 +3,7 @@ LEX = flex
 CC = gcc
 
 TARGET = 20091660
-OBJS = main.o util.o cminus.tab.c lex.yy.c analyze.o
+OBJS = main.o util.o cminus.tab.c lex.yy.c analyze.o symtab.o
 
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $(OBJS) -ly -ll

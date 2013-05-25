@@ -10,7 +10,7 @@
 /* set NO_PARSE to TRUE to get a scanner-only compiler */
 #define NO_PARSE FALSE
 /* set NO_ANALYZE to TRUE to get a parser-only compiler */
-#define NO_ANALYZE TRUE
+#define NO_ANALYZE FALSE
 
 /* set NO_CODE to TRUE to get a compiler that does not
  * generate code
@@ -38,9 +38,9 @@ FILE * code;
 
 /* allocate and set tracing flags */
 int EchoSource = FALSE;
-int TraceScan = TRUE;
-int TraceParse = TRUE;
-int TraceAnalyze = FALSE;
+int TraceScan = FALSE;
+int TraceParse = FALSE;
+int TraceAnalyze = TRUE;
 int TraceCode = FALSE;
 
 int Error = FALSE;
@@ -78,9 +78,9 @@ main( int argc, char * argv[] )
   if (! Error)
   { if (TraceAnalyze) fprintf(listing,"\nBuilding Symbol Table...\n");
     buildSymtab(syntaxTree);
-    if (TraceAnalyze) fprintf(listing,"\nChecking Types...\n");
-    typeCheck(syntaxTree);
-    if (TraceAnalyze) fprintf(listing,"\nType Checking Finished\n");
+    //if (TraceAnalyze) fprintf(listing,"\nChecking Types...\n");
+    //typeCheck(syntaxTree);
+    //if (TraceAnalyze) fprintf(listing,"\nType Checking Finished\n");
   }
 #if !NO_CODE
   if (! Error)

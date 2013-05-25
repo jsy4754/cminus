@@ -21,13 +21,22 @@ static int location = 0;
 static void traverse( TreeNode * t,
                void (* preProc) (TreeNode *),
                void (* postProc) (TreeNode *) )
-{ if (t != NULL)
+{
+  if (t != NULL)
   { preProc(t);
     { int i;
-      for (i=0; i < MAXCHILDREN; i++)
+      for (i=0; i < MAXCHILDREN; i++) {
+	if (t->child[i] == NULL) break;
+	if (t->kind.stmt == CompoundK) {
+	  t->child[i]->scope = t->scope + 1;
+	} else {
+	  t->child[i]->scope = t->scope;
+	}
         traverse(t->child[i],preProc,postProc);
+      }
     }
     postProc(t);
+    if (t->sibling != NULL) t->sibling->scope = t->scope;
     traverse(t->sibling,preProc,postProc);
   }
 }
@@ -50,14 +59,14 @@ static void insertNode( TreeNode * t)
   { case StmtK:
       switch (t->kind.stmt)
       { case AssignK:
-        case ReadK:
           if (st_lookup(t->attr.name) == -1)
           /* not yet in table, so treat as new definition */
-            st_insert(t->attr.name,t->lineno,location++);
+           //st_insert(t->attr.name,t->lineno,location++, -1);
+	    printf("Error\n");
           else
           /* already in table, so ignore location, 
              add line number of use only */ 
-            st_insert(t->attr.name,t->lineno,0);
+            st_insert(t->attr.name,t->lineno,0, t->scope);
           break;
         default:
           break;
@@ -68,15 +77,23 @@ static void insertNode( TreeNode * t)
       { case IdK:
           if (st_lookup(t->attr.name) == -1)
           /* not yet in table, so treat as new definition */
-            st_insert(t->attr.name,t->lineno,location++);
+            //st_insert(t->attr.name,t->lineno,location++, -1);
+	printf("ERROr\n");
           else
           /* already in table, so ignore location, 
              add line number of use only */ 
-            st_insert(t->attr.name,t->lineno,0);
+            st_insert(t->attr.name,t->lineno,0, t->scope);
           break;
         default:
           break;
       }
+      break;
+    case DeclK:
+      if (t->array_size >= 0) { // if variable is not void
+	      if (st_insert(t->attr.name, t->lineno, location++, t->scope) == -1) {
+		printf("Declation Error\n"); location--;
+	      };
+	}
       break;
     default:
       break;
@@ -87,7 +104,9 @@ static void insertNode( TreeNode * t)
  * table by preorder traversal of the syntax tree
  */
 void buildSymtab(TreeNode * syntaxTree)
-{ traverse(syntaxTree,insertNode,nullProc);
+{ 
+  syntaxTree->scope = 0;
+  traverse(syntaxTree,insertNode,nullProc);
   if (TraceAnalyze)
   { fprintf(listing,"\nSymbol table:\n\n");
     printSymTab(listing);
@@ -110,8 +129,8 @@ static void checkNode(TreeNode * t)
           if ((t->child[0]->type != Integer) ||
               (t->child[1]->type != Integer))
             typeError(t,"Op applied to non-integer");
-          if ((t->attr.op == EQ) || (t->attr.op == LT))
-            t->type = Boolean;
+         // if ((t->attr.op == EQ) || (t->attr.op == LT))
+         //   t->type = Boolean;
           else
             t->type = Integer;
           break;
@@ -133,11 +152,7 @@ static void checkNode(TreeNode * t)
           if (t->child[0]->type != Integer)
             typeError(t->child[0],"assignment of non-integer value");
           break;
-        case WriteK:
-          if (t->child[0]->type != Integer)
-            typeError(t->child[0],"write of non-integer value");
-          break;
-        case RepeatK:
+        case WhileK:
           if (t->child[1]->type == Integer)
             typeError(t->child[1],"repeat test is not Boolean");
           break;

@@ -64,12 +64,14 @@ type_spec   : INT
               $$->type = Void;
             }
             ;
-fun_declar  : type_spec ID SOPEN params SCLOSE compound_stmt
+fun_declar  : type_spec ID { savedLineNo = lineno;} 
+		 SOPEN params SCLOSE compound_stmt
                  { $$ = newDeclNode(funK);
                    $$->child[0] = $1;
-                   $$->child[1] = $4;
-                   $$->child[2] = $6;
+                   $$->child[1] = $5;
+                   $$->child[2] = $7;
                    $$->attr.name = copyString(st_pop());
+		   $$->lineno = savedLineNo;
                  }
             ;
 params      : param_list { $$ = $1; }

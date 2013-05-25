@@ -1,3 +1,6 @@
+int i;
+int j;
+
 int gcd(int u, int v)
 {	if (v==0) return u;
 	else return gcd(v, u-u/v*v);
@@ -6,6 +9,6 @@ int gcd(int u, int v)
 
 void main(void)
 {	int x; int y;
-	x = input(); y = input();
+	/*x = input(x); y = input(y);*/
 	output(gcd(x, y));
 }
