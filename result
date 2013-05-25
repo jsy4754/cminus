@@ -1,0 +1,106 @@
+
+Syntax tree:
+  Function Declared: total
+    Integer Type
+    Parameter : i
+      Integer Type
+    Compound statement
+      If
+        Expression
+          Id: i
+          Op:   ==
+          Const: 1
+        Return
+          Const: 1
+        If
+          Expression
+            Id: i
+            Op:   ==
+            Const: 2
+          Return
+            Const: 3
+          Return
+            Expression
+              Call Function : total
+                Expression
+                  Id: i
+                  Op:   -
+                  Const: 1
+              Op:   +
+              Expression
+                Const: 2
+                Op:   *
+                Call Function : total
+                  Expression
+                    Id: i
+                    Op:   -
+                    Const: 2
+  Function Declared: unique
+    Integer Type
+    Parameter : i
+      Integer Type
+    Compound statement
+      If
+        Expression
+          Id: i
+          Op:   ==
+          Const: 1
+        Return
+          Const: 1
+        If
+          Expression
+            Id: i
+            Op:   ==
+            Const: 2
+          Return
+            Const: 3
+          If
+            Expression
+              Id: i
+              Op:   ==
+              Const: 3
+            Return
+              Const: 1
+            If
+              Expression
+                Id: i
+                Op:   ==
+                Const: 4
+              Return
+                Const: 5
+              Return
+                Expression
+                  Call Function : unique
+                    Expression
+                      Id: i
+                      Op:   -
+                      Const: 2
+                  Op:   +
+                  Expression
+                    Const: 2
+                    Op:   *
+                    Call Function : unique
+                      Expression
+                        Id: i
+                        Op:   -
+                        Const: 4
+  Function Declared: main
+    Integer Type
+    Void Parameter
+    Compound statement
+      A Variable Declared: N
+        Integer Type
+      A Variable Declared: D
+        Integer Type
+      A Variable Declared: A
+        Integer Type
+      Assign
+        Id: D
+        Call Function : total
+          Id: N
+      Assign
+        Id: A
+        Call Function : unique
+          Id: N
+      Return
+        Const: 0
