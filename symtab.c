@@ -1,4 +1,3 @@
-/****************************************************/
 /* File: symtab.c                                   */
 /* Symbol table implementation for the TINY compiler*/
 /* (allows only one symbol table)                   */
@@ -61,11 +60,11 @@ static BucketList hashTable[SIZE];
  * loc = memory location is inserted only the
  * first time, otherwise ignored
  */
-int st_insert( char * name, int lineno, int loc, int scope )
+void st_insert( char * name, int lineno, int loc, int scope )
 { int h = hash(name);
   BucketList l =  hashTable[h];
 
-  while ((l != NULL) && (strcmp(name,l->name) != 0) && (l->scope == scope))
+  while ((l != NULL) && (strcmp(name,l->name) != 0) && (l->scope != scope))
     l = l->next;
 
   if (l == NULL) /* variable not yet in table */
@@ -87,16 +86,47 @@ int st_insert( char * name, int lineno, int loc, int scope )
   }
 } /* st_insert */
 
+void st_delete ( int scope ) {
+  int i;
+  for (i = 0; i < SIZE; i++) {
+    BucketList l = hashTable[i];
+    while ( (l != NULL) && (l->scope > scope) ){
+	hashTable[i] = l->next;
+	LineList t = l->lines;
+	while(t != NULL) {
+	    LineList next = t->next;
+	    free(t);
+	    t = next;
+	}printf("[DELETE] %s\n", l->name);
+	free(l);
+	l = hashTable[i];
+    }
+  }
+  return ;
+}
+
 /* Function st_lookup returns the memory 
  * location of a variable or -1 if not found
  */
 int st_lookup ( char * name )
 { int h = hash(name);
-  BucketList l =  hashTable[h];
+  BucketList l =  hashTable[h];printf("[lookup] : %s\n", name);
   while ((l != NULL) && (strcmp(name,l->name) != 0))
     l = l->next;
   if (l == NULL) return -1;
   else return l->memloc;
+}
+
+/*
+*/
+int st_advanced_lookup ( char *name , int scope) {
+  int h = hash(name);
+  BucketList l =  hashTable[h];
+  while ((l != NULL) && (strcmp(name,l->name) != 0) && (l->scope != scope))
+    l = l->next;
+  if (l == NULL) return -1;
+  else return l->memloc;
+
 }
 
 /* Procedure printSymTab prints a formatted 

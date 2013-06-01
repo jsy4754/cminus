@@ -23,11 +23,16 @@ static void traverse( TreeNode * t,
                void (* postProc) (TreeNode *) )
 {
   if (t != NULL)
-  { preProc(t);
+  { 
+    if (t->scope > depth) depth = t->scope;
+    if ( t->nodekind == DeclK && t->kind.decl == paramK) {
+      t->scope++;
+    }
+    preProc(t);
     { int i;
       for (i=0; i < MAXCHILDREN; i++) {
 	if (t->child[i] == NULL) break;
-	if (t->kind.stmt == CompoundK) {
+	if ( t->nodekind == StmtK && t->kind.stmt == CompoundK) {
 	  t->child[i]->scope = t->scope + 1;
 	} else {
 	  t->child[i]->scope = t->scope;
@@ -41,13 +46,30 @@ static void traverse( TreeNode * t,
   }
 }
 
+static void deleteProc(TreeNode *t) {
+ if (t==NULL) return;
+  else {
+    if (t->scope < depth) {
+      st_delete(t->scope);
+      depth = t->scope;
+    }
+    return;
+  }
+}
+
 /* nullProc is a do-nothing procedure to 
  * generate preorder-only or postorder-only
  * traversals from traverse
  */
 static void nullProc(TreeNode * t)
 { if (t==NULL) return;
-  else return;
+  else {
+    if (t->scope < depth) {
+      st_delete(t->scope);
+      depth = t->scope;
+    }
+    return;
+  }
 }
 
 /* Procedure insertNode inserts 
@@ -56,29 +78,14 @@ static void nullProc(TreeNode * t)
  */
 static void insertNode( TreeNode * t)
 { switch (t->nodekind)
-  { case StmtK:
-      switch (t->kind.stmt)
-      { case AssignK:
-          if (st_lookup(t->attr.name) == -1)
-          /* not yet in table, so treat as new definition */
-           //st_insert(t->attr.name,t->lineno,location++, -1);
-	    printf("Error\n");
-          else
-          /* already in table, so ignore location, 
-             add line number of use only */ 
-            st_insert(t->attr.name,t->lineno,0, t->scope);
-          break;
-        default:
-          break;
-      }
-      break;
+{
     case ExpK:
       switch (t->kind.exp)
       { case IdK:
           if (st_lookup(t->attr.name) == -1)
           /* not yet in table, so treat as new definition */
             //st_insert(t->attr.name,t->lineno,location++, -1);
-	printf("ERROr\n");
+	printf("Exp ERROr\n");
           else
           /* already in table, so ignore location, 
              add line number of use only */ 
@@ -90,9 +97,12 @@ static void insertNode( TreeNode * t)
       break;
     case DeclK:
       if (t->array_size >= 0) { // if variable is not void
-	      if (st_insert(t->attr.name, t->lineno, location++, t->scope) == -1) {
-		printf("Declation Error\n"); location--;
-	      };
+		if (st_advanced_lookup(t->attr.name, t->scope) == -1) {
+	      		st_insert(t->attr.name, t->lineno, location++, t->scope);
+			printf("[INSERT] %x %s\n", t, t->attr.name);
+		} else {
+			printf("Declation Error\n"); location--;
+	      	};
 	}
       break;
     default:
@@ -106,7 +116,7 @@ static void insertNode( TreeNode * t)
 void buildSymtab(TreeNode * syntaxTree)
 { 
   syntaxTree->scope = 0;
-  traverse(syntaxTree,insertNode,nullProc);
+  traverse(syntaxTree,insertNode,deleteProc);
   if (TraceAnalyze)
   { fprintf(listing,"\nSymbol table:\n\n");
     printSymTab(listing);

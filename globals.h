@@ -71,6 +71,8 @@ typedef struct treeNode
 static char stack[MAXSTACKSIZE][STRINGSIZE];
 static int top = 0;
 
+static int depth = 0;
+
 /**************************************************/
 /***********   Flags for tracing       ************/
 /**************************************************/
