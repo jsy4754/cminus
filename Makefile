@@ -17,7 +17,7 @@ util.o: util.c util.h globals.h cminus.tab.h
 analyze.o: analyze.c analyze.h globals.h symtab.h
 	$(CC) -o $@ -c analyze.c
 
-symtab.o: symtab.c symtab.h
+symtab.o: symtab.c symtab.h globals.h
 	$(CC) -o $@ -c symtab.c
 
 lex.yy.c: cminus.l globals.h util.h scan.h cminus.tab.h

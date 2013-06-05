@@ -12,6 +12,7 @@ TreeNode * parse(void);
 static char * savedName; /* for use in assignments */
 static int savedLineNo;  /* ditto */
 static TreeNode * savedTree; /* stores syntax tree for later return */
+int pn;
 %}
 
 %token IF ELSE INT RETURN VOID WHILE
@@ -78,6 +79,8 @@ params      : param_list { $$ = $1; }
             | VOID
             { $$ = newDeclNode(paramK);
               $$->array_size = -1;
+				      $$->type = Void;
+							$$->paramnum = 0;
             }
             ;
 param_list  : param_list COMMA param
@@ -101,7 +104,7 @@ param       : type_spec ID
                  { $$ = newDeclNode(paramK);
                    $$->child[0] = $1;
                    $$->attr.name = copyString(st_pop());
-                   $$->array_size = 1;
+		   $$->array_size = 1;
                  }
             ;
 compound_stmt : MOPEN local_declar stmt_list MCLOSE
@@ -160,6 +163,9 @@ iteration_stmt : WHILE SOPEN expr SCLOSE stmt
                  }
                ;
 return_stmt    : RETURN SEMI
+                 { $$ = newStmtNode(ReturnK);
+		   $$->type = Void;
+		 }
                | RETURN expr SEMI
                  { $$ = newStmtNode(ReturnK);
                    $$->child[0] = $2;
@@ -177,11 +183,15 @@ expr           : var ASSIGN expr
 var            : ID
                { $$ = newExpNode(IdK);
                  $$->attr.name = copyString(st_pop());
+		 $$->array_size = 0;
+		 $$->type = Integer;
                }
                | ID BOPEN expr BCLOSE
                { $$ = newExpNode(IdK);
                  $$->attr.name = copyString(st_pop());
                  $$->child[0] = $3;
+		 $$->array_size = 1;
+		 $$->type = Integer;
                }
                ;
 simple_expr : additive_expr relop additive_expr
@@ -253,6 +263,7 @@ factor    : SOPEN expr SCLOSE { $$ = $2; }
           | call { $$ = $1; }
           | NUM
             { $$ = newExpNode(ConstK);
+	      $$->type = Integer;
               $$->attr.val = atoi(st_pop());
             };
 call      : ID SOPEN args SCLOSE

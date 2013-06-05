@@ -1,6 +1,5 @@
 int i;
 int j;
-int i;
 
 int gcd(int u, int v)
 {	if (v==0) return u;
