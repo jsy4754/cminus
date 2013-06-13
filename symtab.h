@@ -45,9 +45,6 @@ typedef struct BucketListRec
 { char * name;
   LineList lines;
   int scope;
-  ExpType type;
-  int array_size;
-  int paramnum;
   TreeNode *tnode_p;
   int memloc ; /* memory location for variable */
   struct BucketListRec * next;
@@ -62,7 +59,7 @@ BucketList hashTable[SIZE];
  * loc = memory location is inserted only the
  * first time, otherwise ignored
  */
-void st_insert( TreeNode *t, int loc);
+void st_insert( TreeNode *t, int loc, int addflag);
 
 void st_delete( int scope);
 

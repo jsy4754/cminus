@@ -16,14 +16,12 @@ static void deleteProc(TreeNode *t) {
   if (t==NULL) return;
   else {
     if (t->scope < depth) {
-
       st_delete(t->scope);
       depth = t->scope;
     }
     return;
   }
 }
-
 
 /* Procedure traverse is a generic recursive 
  * syntax tree traversal routine:
@@ -37,9 +35,10 @@ static void traverse( TreeNode * t,
   if (t != NULL)
     { 
       if (t->scope > depth) depth = t->scope;
-      /*if ( t->nodekind == DeclK && t->kind.decl == paramK) {
-	t->scope++;
-	}*/
+      if (t->nodekind == StmtK) {
+	if (t->kind.stmt == IfK || t->kind.stmt == WhileK || t->kind.stmt == CompoundK)
+	  location = 0;
+      }
       preProc(t);
       { int i;
 	for (i=0; i < MAXCHILDREN; i++) {
@@ -49,6 +48,7 @@ static void traverse( TreeNode * t,
 	  } 
 	  else if(t->nodekind == DeclK && t->kind.decl == funK){
 	    t->child[1]->scope = t->scope+1;
+	    return_type = t->child[0]->type;
 	  }
 	  else {
 	    t->child[i]->scope = t->scope;
@@ -58,36 +58,9 @@ static void traverse( TreeNode * t,
       }
       deleteProc(t);
       postProc(t);
-      //			deleteProc(t);
       if (t->sibling != NULL) t->sibling->scope = t->scope;
       traverse(t->sibling, preProc, postProc);
     }
-}
-
-/*static void deleteProc(TreeNode *t) {
-  if (t==NULL) return;
-  else {
-  if (t->scope < depth) {
-  st_delete(t->scope);
-  depth = t->scope;
-  }
-  return;
-  }
-  }*/
-
-/* nullProc is a do-nothing procedure to 
- * generate preorder-only or postorder-only
- * traversals from traverse
- */
-static void nullProc(TreeNode * t)
-{ if (t==NULL) return;
-  else {
-    if (t->scope < depth) {
-      st_delete(t->scope);
-      depth = t->scope;
-    }
-    return;
-  }
 }
 
 /* Procedure insertNode inserts 
@@ -101,13 +74,9 @@ static void insertNode( TreeNode * t)
       switch (t->kind.exp)
 	{ case IdK:
 	    if (st_lookup(t->attr.name) == -1)
-	      /* not yet in table, so treat as new definition */
-	      //st_insert(t->attr.name,t->lineno,location++, -1);
-	      printf("Exp ERROr\n");
+	      printf("Id wasn't declared.\n");
 	    else
-	      /* already in table, so ignore location, 
-		 add line number of use only */ 
-	      st_insert(t, 0);
+	      st_insert(t, 0, 0);
 	    break;
 	default:
 	  break;
@@ -116,9 +85,9 @@ static void insertNode( TreeNode * t)
     case DeclK:
       if (t->array_size >= 0) { // if variable is not void
 	if (st_advanced_lookup(t->attr.name, t->scope) == -1) {
-	  st_insert(t, location++);
+	  st_insert(t, location++, 1);
 	} else {
-	  printf("Declation Error\n"); location--;
+	  printf("Declation Error %s\n",t->attr.name); location--;
 	}
       }
       break;
@@ -126,20 +95,6 @@ static void insertNode( TreeNode * t)
       break;
     }
 }
-
-/* Function buildSymtab constructs the symbol 
- * table by preorder traversal of the syntax tree
- */
-/*void buildSymtab(TreeNode * syntaxTree)
-  { 
-  syntaxTree->scope = 0;*/
-//traverse(syntaxTree,insertNode,deleteProc);
-/*	traverse(syntaxTree,insertNode,checkNode);
-	if (TraceAnalyze)
-	{ fprintf(listing,"\nSymbol table:\n\n");
-	printSymTab(listing);
-	}
-	}*/
 
 static void typeError(TreeNode * t, char * message)
 { fprintf(listing,"Type error at line %d: %s\n",t->lineno,message);
@@ -162,62 +117,43 @@ static void checkNode(TreeNode * t)
       switch (t->kind.decl){
       case varK:
 	if(t->child[0] != NULL){
-	  t->type = t->child[0]->type;
+	  if(t->child[0]->type == Integer){
+	    t->type = t->child[0]->type;
+	  }
+	  else{
+	    typeError(t,"Variable should not be void type");
+	  }
 	}
 	break;
       case funK:
-	if(strcmp(t->attr.name,"main")==0){
+	if(strcmp(t->attr.name, "main")==0){
 	  if(t->sibling != NULL){
-	    typeError(t,"main is not last function");
-	    break;
+	    typeError(t,"main is not the last function");
 	  }
 	  else{
 	    if(t->child[1]->type != Void){
 	      typeError(t,"main has parameter");
-	      break;
+	    }
+	    if(t->child[0]->type != Void){
+	      typeError(t,"main is not void type");
 	    }
 	  }
 	}
-
-
-	if(t->child[0] != NULL){
-	  t->type = t->child[0]->type;
-	}
 	i=0;
-	l = st_type_lookup(t->attr.name);
-	l->type = t->type;
-
-	if(t->child[1] == NULL){
-	  l->paramnum = 0;
-	  t->paramnum = 0;
-	}
-	else{
+	if(t->child[1]->type != Void){
 	  s = t->child[1];
-	  while(s!=NULL){
-	    if(i>0&&s->type == Void){
-	      typeError(s,"Void parameter error");
+	  while(s != NULL){
+	    if(i > 0 && s->type == Void){
+	      typeError(s,"Void parameter is allowed when it is the first parameter");
 	    }
-	    /*if(s->type == Integer){
-	      printf("param type : Integer\n");
-	      }
-	      else{
-	      printf("param type : Void\n");
-	      }*/
 	    i++;
 	    s = s->sibling;
 	  }
-	  l->paramnum = i;
-	  t->paramnum = i;
 	}
-
-	//printf("%s %d\n",t->attr.name,l->paramnum);
 	break;
       case paramK:
 	if(t->array_size != -1){
 	  t->type = t->child[0]->type;
-	}
-	else{
-
 	}
 	break;
       }
@@ -225,113 +161,34 @@ static void checkNode(TreeNode * t)
     case ExpK:
       switch (t->kind.exp)
 	{
-	case OpK:
-
-	  break;
-	case TypeK:
-
-	  break;
-	case ConstK:
-
-	  break;
 	case IdK:
 	  l = st_type_lookup (t->attr.name);
-	  if ( t->array_size == 0 && l->array_size > 0 ) {//array argument passing in function call
-	    t->array_size = l->array_size;
-	    //typeError(t,"Wrong type!");
-	    //printf("Type Error\n");
-	  }
-	  else if(t->array_size > 0 && l->array_size == 0){//array to var err
-	    typeError(t,"Wrong type!");
-	  }
-	  else if(l->array_size>0){
-	    if(t->child[0]->nodekind == ExpK && t->child[0]->kind.exp == ConstK){
-	      if(t->child[0]->attr.val < 0){
-		typeError(t,"Negative Subscript Error");
+	  if (l == NULL) break;
+	  if ( l->tnode_p->array_size > 0 ) { // should be array
+	    /* can't compare 't->array_size == 0' because t can be used for array pointer */
+	    if (t->array_size > 0) {
+	      if(t->child[0]->nodekind == ExpK && t->child[0]->kind.exp == ConstK){
+		if(t->child[0]->attr.val < 0){
+		  typeError(t,"Negative Subscript Error");
+		}
+	      }
+	      else if(t->child[0]->type != Integer){
+		typeError(t,"Array Index Type Error");
 	      }
 	    }
-	    else if(t->child[0]->type != Integer){
-	      typeError(t,"Array Index Type Error");
-	    }
-	  }
-	  else{
-	    if(t->array_size == 0){
-
-	    }
-	    else{//array
-	      t->attr.idx = t->child[0]->attr.val;
+	  } else if ( l->tnode_p->array_size == 0) { // should be var
+	    if (t->array_size > 0) {
+	      typeError(t,"Wrong type!");
 	    }
 	  }
 	  break;
 	case CalcK:
 	  if ((t->child[0]->type != Integer) ||
-	      (t->child[2]->type != Integer))
+	      (t->child[2]->type != Integer)){
 	    typeError(t,"Op applied to non-integer");
-	  // if ((t->attr.op == EQ) || (t->attr.op == LT))
-	  //   t->type = Boolean;
+	  }
 	  else{
 	    t->type = Integer;
-	    if(t->child[1]->attr.op == LEQ){
-	      if(t->child[0]->attr.val <= t->child[2]->attr.val){
-		t->attr.val = 1;
-	      }
-	      else{
-		t->attr.val = 0;
-	      }
-	    }
-	    else if(t->child[1]->attr.op == LES){
-	      if(t->child[0]->attr.val < t->child[2]->attr.val){
-		t->attr.val = 1;
-	      }
-	      else{
-		t->attr.val = 0;
-	      }
-
-	    }
-	    else if(t->child[1]->attr.op == BIG){
-	      if(t->child[0]->attr.val > t->child[2]->attr.val){
-		t->attr.val = 1;
-	      }
-	      else{
-		t->attr.val = 0;
-	      }
-	    }
-	    else if(t->child[1]->attr.op == BEQ){
-	      if(t->child[0]->attr.val >= t->child[2]->attr.val){
-		t->attr.val = 1;
-	      }
-	      else{
-		t->attr.val = 0;
-	      }
-	    }
-	    else if(t->child[1]->attr.op == EQ){
-	      if(t->child[0]->attr.val == t->child[2]->attr.val){
-		t->attr.val = 1;
-	      }
-	      else{
-		t->attr.val = 0;
-	      }
-	    }
-	    else if(t->child[1]->attr.op == NEQ){
-	      if(t->child[0]->attr.val != t->child[2]->attr.val){
-		t->attr.val = 1;
-	      }
-	      else{
-		t->attr.val = 0;
-	      }
-	    }
-	    else if(t->child[1]->attr.op == PLUS){
-	      t->attr.val = t->child[0]->attr.val + t->child[2]->attr.val;
-	    }
-	    else if(t->child[1]->attr.op == MINUS){
-	      t->attr.val = t->child[0]->attr.val - t->child[2]->attr.val;
-	    }
-	    else if(t->child[1]->attr.op == MUL){
-	      t->attr.val = t->child[0]->attr.val * t->child[2]->attr.val;
-	    }
-	    else if(t->child[1]->attr.op == DIV){
-	      t->attr.val = t->child[0]->attr.val / t->child[2]->attr.val;
-	    }
 	  }
 	  break;
 	}
@@ -339,111 +196,75 @@ static void checkNode(TreeNode * t)
     case StmtK:
       switch (t->kind.stmt)
 	{
-	case CompoundK:
-
-	  break;
 	case IfK:
 	  if(t->child[0]->attr.val != 0 && t->child[0]->attr.val != 1){
 	    typeError(t->child[0],"if test is not Boolean");	   
 	  }
 	  break;
 	case AssignK:
-	  //BucketList l, r; 
 	  l = r = NULL;
 	  l = st_type_lookup(t->child[0]->attr.name);
-	  if(t->child[1]->kind.stmt != ConstK){
+	  if(t->child[1]->kind.exp == IdK){
 	    r = st_type_lookup(t->child[1]->attr.name);
 	  }
-	  if(l == NULL){					
-	    typeError(t->child[0],"invalid assignment");
+	  if(l == NULL){
+	    typeError(t->child[0], "invalid assignment : left operand error");
+	  } else {
+	    if (l->tnode_p->type != Integer) {
+	      typeError(t->child[0],"not integer");
+	    } else if (l->tnode_p->array_size > 0 && t->child[0]->array_size == 0) {
+	      typeError(t,"L is array but using without []");
+	    }
 	  }
-	  else if(r == NULL){//expr
-						
+	  if(r == NULL){//expr
 	    if(t->child[1]->type != Integer){
-	      typeError(t->child[1],"invalid assignment2");
+	      typeError(t->child[1],"invalid assignment : right operand error");
 	    }
-	    else{
-
+	  } else {
+	    if (r->tnode_p->type != Integer) {
+	      typeError(t->child[1],"not integer");
 	    }
-	  }
-	  else{//var to var assignment
-						
-	    if(l->array_size == 0  && r->array_size == 0){
-	      if(l->type != Integer){
-		typeError(t->child[0],"not integer");
-	      }
-	      else if(r->type != Integer){
-		typeError(t->child[1],"not integer2");
-	      }
-	      else{
-		t->type = Integer;
-
+	    if(t->child[1]->nodekind == ExpK && t->child[1]->kind.exp == IdK){//var = var
+	      if(r->tnode_p->array_size > 0 && t->child[1]->array_size == 0){
+		typeError(t,"R is array but using without []");
 	      }
 	    }
-	    else if(l->array_size > 0 && r->array_size == 0){
-	      if((t->child[0]->attr.idx > t->child[0]->array_size) || (t->child[0]->attr.idx < 0)){
-		typeError(t->child[0],"out of array index range");
-	      }
-	      else{
-		t->type = Integer;
-	      }
-	    }
-	    else if(l->array_size == 0 && r->array_size > 0){
-	      if((t->child[1]->attr.idx > t->child[1]->array_size) || (t->child[1]->attr.idx < 0)){
-		typeError(t->child[1],"out of array index range");
-	      }
-	      else{
-		t->type = Integer;
-	      }
-	    }
-	    else{
-	      if((t->child[1]->attr.idx > t->child[1]->array_size) || (t->child[1]->attr.idx < 0)){
-		typeError(t->child[1],"out of array index range");
-	      }
-	      else if((t->child[0]->attr.idx > t->child[0]->array_size) || (t->child[0]->attr.idx < 0)){
-		typeError(t->child[0],"out of array index range");
-	      }
-	      else{
-		t->type = Integer;
-	      }
-	    }
+	    t->type = Integer;
 	  }
 	  break;
 	case WhileK:
 	  if (t->child[0]->type != Integer){
-	    typeError(t->child[1],"repeat test is not Boolean");
+	    typeError(t->child[1],"expression should be integer type");
 	  }
 	  else{
 	    t->type = Integer;
-
 	  }
 	  break;
 	case ReturnK:
+	  /* l = st_type_lookup(t->attr.name); */
 	  if(t->child[0] == NULL){//void return
-	    //t->type = Void;
-	    typeError(t,"Function declaration has no return, but there is return stmt in function definition");
+	    if (return_type != Void)
+	      typeError(t,"Function has no return, but the function is not void type");
 	  }
 	  else{//data return
-	    t->type = Integer;
-	    if(t->child[0]->kind.stmt == CallK){
-	      l=NULL;
+	    if (return_type == Void)
+	      typeError(t,"Function has return value, but the function is void type");
+	    if(t->child[0]->kind.stmt == CallK) {
 	      l = st_type_lookup(t->child[0]->attr.name);
-	      if(l == NULL){
-		typeError(t,"unknown function name");
+	      if(l != NULL && l->tnode_p->type != Integer){
+	    	typeError(t,"return type error");
 	      }
-	      else{
-		if(l->type != Integer){
-		  typeError(t,"return type error2");
-		}
-		else{
-		}
-	      }
-	    }
-	    else{
+	    } else if (t->child[0]->kind.exp == IdK) {
+	      l = st_type_lookup(t->child[0]->attr.name);
+	      if (l->tnode_p->array_size > 0 && t->child[0]->array_size == 0) {
+	    	typeError(t,"return type error");
+	      } // case : return array
+	    } else{
 	      if(t->child[0]->type == Void){
-		typeError(t->child[0],"return type error");
+	    	typeError(t->child[0],"return type error");
 	      }
 	    }
+	    t->type = Integer;
 	  }
 	  break;
 	case CallK:
@@ -452,72 +273,47 @@ static void checkNode(TreeNode * t)
 	    typeError(t,"unknown function name");
 	  }
 	  else{
-	    if(l->paramnum == -1){//is not function name
+	    t->type = l->tnode_p->type;
+	    if(l->tnode_p->paramnum == -1){//is not function name
 	      typeError(t,"is not function name");
 	    }
 	    else{
 	      i=0;
 	      if(t->child[0] == NULL){//no argument
-		if(l->paramnum == 0){
-
-		}
-		else{//need argument, but there is no argument
-		  printf("%s\n",t->attr.name);
+		if(l->tnode_p->paramnum != 0){
 		  typeError(t,"arguments not match");
 		}
 	      }
 	      else{//some argument
 		s = t->child[0];
-		while(s!=NULL){
+		while(s != NULL){
 		  i++;
 		  s = s->sibling;
 		}
-		if(l->paramnum == i){
+		if(l->tnode_p->paramnum == i){
 		  s = t->child[0];
-		  p = l->tnode_p;
-		  if(p->child[1] != NULL){
-		    p = p->child[1];
-		  }
-		  while(s!=NULL){
-		    /*r = NULL;
-		      r = st_type_lookup(p->attr.name);
-		      if(r == NULL){
-		      printf("unknown %s %s\n",s->attr.name,p->attr.name);
-		      typeError(s,"unknown argument");
-		      }
-		      else{
-		      if(s->type != r->type){
+		  p = l->tnode_p->child[1];
+
+		  while(s != NULL && p != NULL){
+		    if(s->type != p->type){
 		      typeError(s,"argument type is not matched");
-		      }
-		      else if(s->array_size != r->array_size){
-		      typeError(s,"argument array size not match");
-		      }
-		      else{//okay
-
-		      }
-		      }*/
-		    if(p == NULL){
-		      typeError(s,"unknown argument");
 		    }
-		    else{
-		      if(s->type != p->type){
-			typeError(s,"argument type is not matched");
-		      }
-		      else if(s->array_size > 0 && p->array_size == 0){
-			typeError(s,"argument type is not matched(array to var)");
-		      }
-		      else if(s->array_size == 0 && p->array_size > 0){
-			typeError(s,"argument type is not matched(var to array)");
-		      }
-		      else{//okay
-
+		    if (s->nodekind == ExpK && s->kind.exp == IdK) {
+		      BucketList tmp = st_type_lookup(s->attr.name);
+		      if (p->array_size == 0) { // should be var
+			if (tmp->tnode_p->array_size > 0 && s->array_size == 0) {
+			  typeError(s,"argument type is not matched(array to var)");
+			}
+		      } else if (p->array_size > 0) { // should be array pointer
+			if ( tmp->tnode_p->array_size == 0 ||
+			     (tmp->tnode_p->array_size > 0 && s->array_size > 0) )
+			  typeError(s,"argument type is not matched(var to array)");
 		      }
 		    }
 		    s = s->sibling;
 		    p = p->sibling;
 		  }
-		}
-		else{//number of arguments not match to number of parameters
+		} else{//number of arguments not match to number of parameters
 		  typeError(t,"arguments not match2");
 		}
 	      }
@@ -539,16 +335,12 @@ static void checkNode(TreeNode * t)
 void buildSymtab(TreeNode * syntaxTree)
 { 
   syntaxTree->scope = 0;
-  //traverse(syntaxTree,insertNode,deleteProc);
+  fprintf(listing,"Scope  Variable Name Location Type isArr ArrSize isFunc isParam Line Numbers\n");
+  fprintf(listing,"-----  ------------- -------- ---- ----- ------- ------ ------- ------------\n");
   traverse(syntaxTree,insertNode,checkNode);
   if (TraceAnalyze)
-    { fprintf(listing,"\nSymbol table:\n\n");
-      printSymTab(listing);
+    { //fprintf(listing,"\nSymbol table:\n\n");
+      //printSymTab(listing);
+      st_delete(-1);
     }
-}
-/* Procedure typeCheck performs type checking 
- * by a postorder syntax tree traversal
- */
-void typeCheck(TreeNode * syntaxTree)
-{ traverse(syntaxTree,nullProc,checkNode);
 }

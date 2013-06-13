@@ -78,9 +78,9 @@ fun_declar  : type_spec ID { savedLineNo = lineno;}
 params      : param_list { $$ = $1; }
             | VOID
             { $$ = newDeclNode(paramK);
-              $$->array_size = -1;
-				      $$->type = Void;
-							$$->paramnum = 0;
+		$$->array_size = -1;
+		$$->type = Void;
+		$$->paramnum = 0;
             }
             ;
 param_list  : param_list COMMA param
@@ -270,7 +270,7 @@ call      : ID SOPEN args SCLOSE
             { $$ = newStmtNode(CallK);
               $$->attr.name = copyString(st_pop());
               $$->child[0] = $3;
-              $$->lineno = savedLineNo;
+              /* $$->lineno = savedLineNo; */
             };
 args       : arg_list { $$ = $1; } | empty { $$ = $1; };
 

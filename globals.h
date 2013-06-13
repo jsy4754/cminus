@@ -58,10 +58,10 @@ typedef struct treeNode
      NodeKind nodekind;
      union { StmtKind stmt; ExpKind exp; DeclKind decl;} kind;
      union { TokenType op;
-             int val;
-						 int idx;
-             char * name; } attr;
-		 int paramnum;//for function
+       int val;
+       int idx;
+       char * name; } attr;
+     int paramnum;//for function
      int array_size;
      int scope;
      ExpType type; /* for type checking of exps */
@@ -74,6 +74,7 @@ static char stack[MAXSTACKSIZE][STRINGSIZE];
 static int top = 0;
 
 static int depth = 0;
+ExpType return_type;
 
 /**************************************************/
 /***********   Flags for tracing       ************/
